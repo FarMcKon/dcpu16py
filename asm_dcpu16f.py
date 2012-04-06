@@ -55,7 +55,7 @@ line_regex = re.compile(r"""
             )
         )
         |(
-            (?P<nonbasic>JSR|RRROM|AUD_O|AUD_I) # non-basic instruction
+            (?P<nonbasic>JSR|RROM|AUD_O|AUD_I) # non-basic instruction
             \s+
             ( # operand
                 (?P<op3_register>A|B|C|X|Y|Z|I|J|POP|PEEK|PUSH|SP|PC|O) # register
@@ -86,7 +86,7 @@ line_regex = re.compile(r"""
 
 IDENTIFIERS = {"A": 0x0, "B": 0x1, "C": 0x2, "X": 0x3, "Y": 0x4, "Z": 0x5, "I": 0x6, "J": 0x7, "POP": 0x18, "PC": 0x1C}
 OPCODES = {"SET": 0x1, "ADD": 0x2, "SUB": 0x3, "MUL": 0x4, "DIV": 0x5, "MOD": 0x6, "SHL": 0x7, "SHR": 0x8, "AND": 0x9, "BOR": 0xA, "XOR": 0xB, "IFE": 0xC, "IFN": 0xD, "IFG": 0xE, "IFB": 0xF}
-OPCODES_ADVANCED  = {"JSR":0x1, "RROM":0x2,"AUD_O":0x3,"AUD_I":0x4}
+OPCODES_ADVANCED  = {"JSR":0x1,"RROM":0x2,"AUD_O":0x3,"AUD_I":0x4}
 
 program = []
 labels = {}
@@ -136,6 +136,8 @@ def valuesFromAdvOperands(tokenDictionary, operandsAllowed=allAdvOperands):
 		exit (-10)
 	return(b,y)
 
+
+
 if len(sys.argv) == 3:
     input_filename = sys.argv[1]
     output_filename = sys.argv[2]
@@ -149,6 +151,7 @@ def report_error(filename, lineno, error):
 for lineno, line in enumerate(open(input_filename), start=1):
     mo = line_regex.match(line)
     if mo is None:
+    	print "mo " + str(line)
         report_error(input_filename, lineno, "Syntax error")
         break
 
@@ -247,8 +250,6 @@ for lineno, line in enumerate(open(input_filename), start=1):
     elif token_dict["nonbasic"] is not None:
         o = 0x00
         a = OPCODES_ADVANCED[token_dict["nonbasic"]]
-        if token_dict["nonbasic"] == "RRROM": #Limit type
-			(b,y) = valuesFromAdvOperands(token_dict,['op3_hex_literal','op3_decimal_literal'])
         if token_dict["nonbasic"] == "AUD_I" or token_dict["nonbasic"] == "AUD_O": #Limit type
 			(b,y) = valuesFromAdvOperands(token_dict,['op3_register',])
         else:

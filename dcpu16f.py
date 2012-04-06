@@ -22,14 +22,16 @@ OPCODES = {"SET": 0x1, "ADD": 0x2, "SUB": 0x3, "MUL": 0x4, "DIV": 0x5, "MOD": 0x
 audio_stream = []
 class DCPU16:
 	
-	def __init__(self, memory):
+	def __init__(self, memory,rom):
 		self.memory = [Cell(memory[i]) if i < len(memory) else Cell() for i in range(0x10000)]
-		self.rom = [Cell(memory[i]) if i < len(memory) else Cell() for i in range(0x32)]
-		self.rom[32] = 0x42	 #Vendor id for the series f knock-off chip
+		self.rom = [Cell(rom[i]) if i < len(rom) else Cell() for i in range(32)]
+		self.rom[31].value = 0x42	 #Vendor id for the series f knock-off chip
 		self.registers = tuple(Cell() for _ in range(11))
 		self.io =[Cell(),Cell()]
 		self.skip = False
 		self.tick = 0
+		self.clock_Khz=120 #series F chips run at 120 or 200 KHZ
+		
 		audio_stream.append((self.tick,0x00))
 	def SET(self, a, b):
 		a.value = b.value
@@ -131,11 +133,13 @@ class DCPU16:
 
 	
 	def RROM(self, a, b):
-		print 'b value ' + str(b.value)
 		a.value	 = self.rom[b.value].value
 		self.tick = self.tick +2 
+		print 'b value ' + str(b.value)
+		print 'a value ' + str(a.value)
 		print "rrom"
-		exit(-20)
+		if(a >= 31):	
+			exit(-20)
 
 	def AUD_O(self, a, b):
 		a.value = b.value #io[0] = register value 
@@ -187,7 +191,7 @@ class DCPU16:
 		return arg1
 
 	
-	def run(self, debug=False):
+	def run(self, debug=True):
 
 		while True:
 			pc = self.registers[PC].value
@@ -208,8 +212,6 @@ class DCPU16:
 					op = self.RROM
 					arg1 = self.registers[6]
 					#arg2 loaded below 
-					print "blarg2"
-					exit(-2)
 				elif  a == OPCODES_ADVANCED["AUD_O"]:
 					op = self.AUD_O
 					arg1 = self.io[0]
@@ -269,6 +271,9 @@ if __name__ == "__main__":
 		
 		dcpu16 = DCPU16(program)
 		dcpu16.run(debug=False)
+		
+		
 		print audio_stream
+		
 	else:
 		print "usage: ./dcpu16.py <object-file>"
