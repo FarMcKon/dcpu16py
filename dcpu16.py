@@ -20,6 +20,7 @@ except NameError:
 SP, PC, O, LIT = 0x1001B, 0x1001C, 0x1001D, 0x1001E
 
 
+
 def opcode(code):
     """A decorator for opcodes"""
     def decorator(func):
@@ -34,13 +35,11 @@ class DCPU16:
     
     def __init__(self, memory, plugins=[]):
         
-        self.plugins = plugins
-        
+        self.plugins = plugins 
         self.memory = [memory[i] if i < len(memory) else 0 for i in range(0x1001F)]
-        
         self.skip = False
         self.cycle = 0
-        
+        # Generates op-codes 
         self.opcodes = {}
         for name, value in inspect.getmembers(self):
             if inspect.ismethod(value) and getattr(value, "_is_opcode", False):
@@ -191,6 +190,7 @@ class DCPU16:
             arg1 = self.memory[arg1]
         return arg1
     
+    
     def run(self, trace=False, show_speed=False):
         tick = 0
         last_time = time.time()
@@ -218,7 +218,11 @@ class DCPU16:
             else:
                 arg1 = self.get_operand(a)
             
-            op = self.opcodes[opcode]
+            try:
+	            op = self.opcodes[opcode]
+            except KeyError, err:
+	            print ("Unknown operation for this machine " + str(hex(opcode)) ) 
+	            return -5
             arg2 = self.get_operand(b, dereference=True)
             
             if self.skip:
@@ -227,6 +231,10 @@ class DCPU16:
                 self.skip = False
             else:
                 if 0x01 <= opcode <=0xB: # write to memory
+                    if(arg1 >= 0xFFFF):  #emulate wrapping out of bound reads/writes
+                    	print ("Mem out of bounds at " + str(arg1) ) 
+                    	(ignore, arg1 ) = divmod(arg1,0xFFFF)  
+                    	print ("wrapping memread to  " + str(arg1) ) 
                     oldval = self.memory[arg1]
                     op(arg1, arg2)
                     val = self.memory[arg1]
@@ -264,7 +272,17 @@ class DCPU16:
             print("Stack: [" + " ".join("%04X" % self.memory[m] for m in range(self.memory[SP], 0x10000)) + "]")
 
 
+def read_cmd(file_object, chunk_size=2):
+    """Lazy function (generator) to read asm by generator. Default chunk size: 2by."""
+    while True:
+        data = file_object.read(chunk_size)
+        if not data:
+            break
+        yield data
+
+
 if __name__ == "__main__":
+
     plugins = emuplugin.importPlugins()
     parser = argparse.ArgumentParser(description="DCPU-16 emulator")
     parser.add_argument("-d", "--debug", action="store_const", const=True, default=False, help="Run emulator in debug mode. This implies '--trace'")
@@ -282,10 +300,8 @@ if __name__ == "__main__":
     
     program = []
     with open(args.object_file, "rb") as f:
-        word = f.read(2)
-        while word:
-            program.append(struct.unpack(">H", word)[0])
-            word = f.read(2)
+    	for word in read_cmd(f):
+    		program.append(struct.unpack(">H", word)[0])
     
     plugins_loaded = []
     try:
